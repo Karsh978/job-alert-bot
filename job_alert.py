@@ -1,3 +1,6 @@
+cat /mnt/user-data/outputs/job-alert-bot/job_alert.py
+Output
+
 """
 Job Alert Bot
 -------------
@@ -156,6 +159,7 @@ def send_whatsapp(message):
     Requires env vars: TWILIO_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM, TWILIO_TO
     TWILIO_FROM is Twilio's sandbox number e.g. 'whatsapp:+14155238886'
     TWILIO_TO is your number e.g. 'whatsapp:+91XXXXXXXXXX'
+    Returns True if sent successfully, False otherwise.
     """
     sid = os.environ["TWILIO_SID"]
     token = os.environ["TWILIO_AUTH_TOKEN"]
@@ -171,8 +175,10 @@ def send_whatsapp(message):
     )
     if resp.status_code >= 300:
         print(f"[error] Twilio send failed: {resp.status_code} {resp.text}")
+        return False
     else:
         print("[ok] WhatsApp message sent")
+        return True
 
 
 def main():
@@ -187,6 +193,7 @@ def main():
         print(f"Found {len(new_jobs)} new matching job(s).")
         # Group multiple jobs into one WhatsApp message to avoid spam/rate limits
         chunks = [new_jobs[i:i + 3] for i in range(0, len(new_jobs), 3)]
+        successfully_sent_ids = []
         for chunk in chunks:
             lines = ["🚨 *New Internship/Job Alert!*\n"]
             for j in chunk:
@@ -196,10 +203,15 @@ def main():
                     f"Source: {j['source']}\n"
                     f"Apply: {j['link']}\n"
                 )
-            send_whatsapp("\n".join(lines))
+            sent_ok = send_whatsapp("\n".join(lines))
+            if sent_ok:
+                successfully_sent_ids.extend(j["id"] for j in chunk)
+            else:
+                print(f"[warn] Skipping seen-mark for {len(chunk)} job(s) since the message failed to send (will retry next run).")
 
-        seen.update(j["id"] for j in new_jobs)
-        save_seen(seen)
+        if successfully_sent_ids:
+            seen.update(successfully_sent_ids)
+            save_seen(seen)
 
     print("\nReminder - check these manually (cannot be auto-scraped reliably):")
     for name, link in MANUAL_CHECK_LINKS:

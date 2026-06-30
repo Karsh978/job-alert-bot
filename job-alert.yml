@@ -9,6 +9,11 @@ on:
 permissions:
   contents: write
 
+# Prevents two runs from overlapping and fighting over the same git push.
+concurrency:
+  group: job-alert-bot
+  cancel-in-progress: false
+
 jobs:
   check-jobs:
     runs-on: ubuntu-latest
@@ -38,4 +43,5 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add seen_jobs.json
           git diff --staged --quiet || git commit -m "Update seen jobs list"
+          git pull --rebase origin main || true
           git push

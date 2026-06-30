@@ -1,5 +1,3 @@
-cat /mnt/user-data/outputs/job-alert-bot/job_alert.py
-Output
 
 """
 Job Alert Bot
